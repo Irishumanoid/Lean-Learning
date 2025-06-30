@@ -57,3 +57,120 @@ example (hp : p) : p ∨ q := Or.intro_left q hp
 example (hq : q) : p ∨ q := Or.intro_right p hq
 example (h : p ∨ q) : q ∨ p :=
   Or.elim h (fun hp => Or.inr hp) (fun hq => Or.inl hq)
+
+example (hpq : p → q) (hnq : ¬q) : ¬p :=
+  fun hp : p => show False from hnq (hpq hp)
+-- anything follows from a contradiction
+example (hp : p) (hnp : ¬p) : q := False.elim (hnp hp)
+example (hnp : ¬p) (hq : q) (hqp : q → p) : r :=
+  absurd (hqp hq) hnp
+
+
+variable (p q : Prop)
+theorem and_swap : p ∧ q ↔ q ∧ p :=
+  ⟨ fun h => ⟨ h.right, h.left ⟩, fun h => ⟨ h.right, h.left ⟩ ⟩
+
+-- Iff.mp gets p → q from p ↔ q
+example (h : p ∧ q) : q ∧ p := (and_swap p q).mp h
+
+example (h : p ∧ q) : q ∧ p :=
+  have hp : p := h.left
+  have hq : q := h.right
+  show q ∧ p from And.intro hq hp
+-- suffices provess original goal (q ∧ p) with hypothesis (hq : q)
+example (h : p ∧ q) : q ∧ p :=
+  have hp : p := h.left
+  suffices hq : q from And.intro hq hp
+  show q from And.right h
+
+
+-- useful for proofs by contradiction
+open Classical
+#check em p -- added by Classical logic
+theorem dne {p : Prop} (h : ¬¬p) : p :=
+  Or.elim (em p)
+    (fun hp : p => hp)
+    -- applying h : ¬p → false to hnp : ¬p gives contradiction
+    (fun hnp : ¬p => absurd hnp h)
+
+theorem em_from_dne (dne : ∀ {p : Prop}, ¬¬p → p) : ∀ p : Prop, p ∨ ¬p :=
+  fun p =>
+    dne (fun h : ¬(p ∨ ¬p) =>
+      let hp : ¬p := fun hp => h (Or.inl hp) -- RHS takes in p and returns false
+      let hnp: ¬¬p := fun hnp => h (Or.inr hnp)
+      h (Or.inr hp) -- contradiction since both conditions in the OR statement are false
+    )
+
+-- alternative proofs of dne
+example (h: ¬¬p) : p :=
+  byCases
+  (fun hp : p => hp)
+  (fun hnp : ¬p => absurd hnp h)
+
+example (h: ¬¬p) : p :=
+  byContradiction
+  (fun hp : ¬p =>
+   show False from h hp) -- h is function that takes ¬p to false
+
+example (h : ¬(p ∧ q)) : ¬p ∨ ¬q :=
+  Or.elim (em p)
+    -- if p is true, show ¬q
+    (fun hp : p =>
+      Or.inr
+        -- contradiction that shows q → False
+        (show ¬q from
+          fun hq : q =>
+          h ⟨hp, hq⟩))
+    (fun hp : ¬p =>
+      Or.inl hp)
+
+
+-- Exercises
+variable (p q r : Prop)
+
+-- commutativity of ∧ and ∨
+example : p ∧ q ↔ q ∧ p :=
+  Iff.intro
+    (fun h : p ∧ q => And.intro h.right h.left)
+    (fun h : q ∧ p => And.intro h.right h.left)
+example : p ∨ q ↔ q ∨ p :=
+  Iff.intro
+    (fun h : p ∨ q =>
+      Or.elim h (fun hp => Or.inr hp) (fun hq => Or.inl hq))
+    (fun h : q ∨ p =>
+      Or.elim h (fun hq => Or.inr hq) (fun hp => Or.inl hp))
+
+-- associativity of ∧ and ∨
+example : (p ∧ q) ∧ r ↔ p ∧ (q ∧ r) := sorry
+example : (p ∨ q) ∨ r ↔ p ∨ (q ∨ r) := sorry
+
+-- distributivity
+example : p ∧ (q ∨ r) ↔ (p ∧ q) ∨ (p ∧ r) := sorry
+example : p ∨ (q ∧ r) ↔ (p ∨ q) ∧ (p ∨ r) := sorry
+
+-- other properties
+example : (p → (q → r)) ↔ (p ∧ q → r) := sorry
+example : ((p ∨ q) → r) ↔ (p → r) ∧ (q → r) := sorry
+example : ¬(p ∨ q) ↔ ¬p ∧ ¬q := sorry
+example : ¬p ∨ ¬q → ¬(p ∧ q) := sorry
+example : ¬(p ∧ ¬p) := sorry
+example : p ∧ ¬q → ¬(p → q) := sorry
+example : ¬p → (p → q) := sorry
+example : (¬p ∨ q) → (p → q) := sorry
+example : p ∨ False ↔ p := sorry
+example : p ∧ False ↔ False := sorry
+example : (p → q) → (¬q → ¬p) := sorry
+
+
+-- proof by contradiction scariness oof
+open Classical
+
+variable (p q r : Prop)
+
+example : (p → q ∨ r) → ((p → q) ∨ (p → r)) := sorry
+example : ¬(p ∧ q) → ¬p ∨ ¬q := sorry
+example : ¬(p → q) → p ∧ ¬q := sorry
+example : (p → q) → (¬p ∨ q) := sorry
+example : (¬q → ¬p) → (p → q) := sorry
+example : p ∨ ¬p := sorry
+example : (((p → q) → p) → p) := sorry
