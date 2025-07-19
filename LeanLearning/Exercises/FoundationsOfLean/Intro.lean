@@ -149,4 +149,135 @@ example : (p → q) → (¬q → ¬p) :=
   λ hpq hnq hp => absurd (hpq hp) hnq
 
 
+-- new namespace to prevent type collisions with default libraries
+namespace Temp
 -- Inductive Types
+inductive Two where
+  | a : Two
+  | b : Two
+
+inductive Nat where
+  | zero : Nat
+  | succ : Nat → Nat
+
+def Nat.plus (n m : Nat) := match n with
+  | zero => m
+  | succ x => succ (plus x m)
+
+open Nat
+#check succ (succ (succ zero))
+#check zero.succ.succ.succ
+#reduce plus (succ zero) (succ zero)
+
+
+inductive Expr where
+  | var : String → Expr
+  | add : Expr → Expr → Expr
+  | mul : Expr → Expr → Expr
+  | neg : Expr → Expr
+
+def Expr.swap (e : Expr) := match e with
+  | var s => var s
+  | add x y => add y x
+  | mul x y => mul y x
+  | neg x => neg x
+
+open Expr
+#check add (var "x") (var "y")                          -- x+y
+#check add (var "x") (mul (neg (var "y")) (var "z"))    -- x-yz
+def e := add (var "x") (mul (neg (var "y")) (var "z"))
+#reduce e
+#reduce e.swap
+
+
+def Two.toggle ( x : Two ) := match x with
+  | Two.a => Two.b
+  | Two.b => Two.a
+
+open Two
+#reduce toggle (toggle Two.a)
+
+
+inductive NatList where
+  | empty : NatList
+  | cons : Nat → NatList → NatList -- takes a Nat and a NatList and adds the Nat to the NatList
+namespace NatList
+#check cons zero (cons zero empty) -- [0, 0]
+#check (empty.cons zero).cons zero -- [0, 0]
+
+
+inductive List {α : Type} where
+  | empty : List
+  | cons : α → List → List
+
+namespace List
+#check cons "hello" (cons "world" empty) -- ['hello', 'world']
+
+
+-- Propositional connectives
+def g (p q : Prop) : p → q → And p q :=
+  λ hp => λ hq => And.intro hp hq
+
+/-
+                Γ ⊢ φ ∧ ψ                          Γ ⊢ φ ∧ ψ
+  ∧-Elim-Left ——————————————         ∧-Elim-Right —————————————
+                  Γ ⊢ φ                              Γ ⊢ ψ
+-/
+def And.left {p q : Prop} (hpq : And p q) :=
+  match hpq with
+  | And.intro hp _ => hp
+
+def And.right {p q : Prop} (hpq : And p q) :=
+  match hpq with
+  | And.intro _ hq => hq
+
+example (p q : Prop) : (And p q) → p :=
+  λ hpq => And.left hpq
+
+example (p q : Prop) : (And p q) → (And q p) :=
+  λ hpq => And.intro hpq.right hpq.left
+
+/-
+                 Γ ⊢ φ                              Γ ⊢ ψ
+ ∨-Intro-Left ———————————          ∨-Intro-Right ————————————
+               Γ ⊢ φ ∨ ψ                          Γ ⊢ φ ∨ ψ
+-/
+inductive Or (Φ Ψ : Prop) : Prop where
+  | inl (h : Φ) : Or Φ Ψ
+  | inr (h : Ψ) : Or Φ Ψ
+
+example (p q : Prop) : And p q → Or p q :=
+  λ hpq => Or.inl hpq.left
+
+
+/-
+           Γ,p ⊢ r    Γ,q ⊢ r    Γ ⊢ p ∨ q
+  ∨-Elim ————————————————————————————————————
+                       Γ ⊢ r
+-/
+def Or.elim {p q r : Prop} (hpq : Or p q) (hpr : p → r) (hqr : q → r) : r :=
+  match hpq with
+  | Or.inl hp => hpr hp
+  | Or.inr hq => hqr hq
+
+example (p q : Prop): Or p q → Or q p :=
+  λ hpq => Or.elim hpq (λ hp => Or.inr hp) (λ hq => Or.inl hq)
+
+
+inductive False : Prop
+def Not (p : Prop) : Prop := p → False
+
+/-
+           Γ ⊢ ⊥
+  ⊥-Elim ——————————
+           Γ ⊢ p
+
+Anything can be derived from False
+-/
+def False.elim {p : Prop} (h : False) : p := nomatch h
+
+example (p q : Prop) : And p (Not p) → q :=
+  λ h => False.elim (h.right h.left)
+
+example : False → True :=
+  λ h => False.elim h
