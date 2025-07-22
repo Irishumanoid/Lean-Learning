@@ -1,1 +1,1 @@
-# Lean-learning
+# LeanLearning

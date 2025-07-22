@@ -9,8 +9,7 @@ open Matrix
 def is_eigenvalue {n:ℕ} (A : ℂ^{n²}) (s : ℂ) :=
   ∃ v : ℂ^{n}, v ≠ 0 ∧ A *ᵥ v = s • v
 
-def is_eigen_pair
-  {n:ℕ} (A : ℂ^{n²}) (s : ℂ) (v : ℂ^{n}) :=
+def is_eigen_pair {n:ℕ} (A : ℂ^{n²}) (s : ℂ) (v : ℂ^{n}) :=
   v ≠ 0 ∧ A *ᵥ v = s • v
 
 def spectrum {n:ℕ} (A : ℂ^{n²}) := { s : ℂ | is_eigenvalue A s}

@@ -2,12 +2,15 @@ import Mathlib
 
 namespace MatrixAnalysis
 
+
 def row_minor
     {n m: ℕ} (A : Matrix (Fin m) (Fin n) ℂ) (k: (Fin m))
     : Matrix (Fin (m-1)) (Fin n) ℂ :=
     Matrix.of λ i j =>
-      if (Fin.mk i (Nat.lt_of_lt_pred i.isLt)) < k
+      -- check if row index is less than last index of matrix with m rows
+      if (Fin.mk i (Nat.lt_of_lt_pred i.isLt)) < k -- ∃ j, Fin j < Fin m
       then A (Fin.mk i (Nat.lt_of_lt_pred i.isLt)) j
+      -- get the element from the next row instead
       else A (Fin.mk (i+1) (Nat.add_lt_of_lt_sub i.isLt)) j
 
 def col_minor
