@@ -9,9 +9,6 @@ open RealInnerProductSpace
 notation "ℝ^{" n "}" => EuclideanSpace ℝ (Fin n)
 variable {n : ℕ} (a : ℝ) (x y : ℝ^{n})
 
-theorem cauchy_schwarz_concrete : ‖⟪x, y⟫‖ ≤ ‖x‖ * ‖y‖ := by
-  exact abs_real_inner_le_norm x y
-
 lemma inner_prod_over_mag (h : a ≠ 0) : (a / ‖a‖) * (a / ‖a‖) = 1 := by
   field_simp [h]
 
@@ -25,44 +22,40 @@ lemma simp_mul_with_coeff (hy : ‖y‖ ≠ 0) : a • (1 / ‖y‖) * a • (1 
   rw [←pow_two a, pow_two ‖y‖]
 
 lemma get_one (v : ℝ^{n}) (h : ⟪v, v⟫ ≠ 0): 1 / ‖v‖ * (1 / ‖v‖) * ⟪v, v⟫ = 1 :=  by
-  rw [mul_assoc, one_div_mul_eq_div, one_div_mul_eq_div, div_div, norm_eq_sqrt_real_inner]
-  rw [←pow_two, Real.sq_sqrt (real_inner_self_nonneg), div_self]
-  exact h
+  rwa [one_div_mul_one_div, norm_eq_sqrt_real_inner, ←pow_two,
+      Real.sq_sqrt (real_inner_self_nonneg), mul_comm, mul_one_div, div_self]
 
-lemma nonzero_inner_implies_nonzero_vectors (h : ⟪x, y⟫ ≠ 0) : ⟪x, x⟫ ≠ 0 ∧ ⟪y, y⟫ ≠ 0 := by
-  have hx : x ≠ 0 := by
-    intro hx
-    rw [hx, inner_zero_left] at h
-    exact h rfl
-  have hy : y ≠ 0 := by
-    intro hy
-    rw [hy, inner_zero_right] at h
-    exact h rfl
-  exact ⟨inner_self_ne_zero.mpr hx, inner_self_ne_zero.mpr hy⟩
+lemma nonzero_inner_implies_nonzero_vectors
+  (h : ⟪x, y⟫ ≠ 0) : ⟪x, x⟫ ≠ 0 ∧ ⟪y, y⟫ ≠ 0 := by
+  apply And.intro
+  . by_contra hx
+    have : x = 0 := by exact inner_self_eq_zero.mp hx
+    rw [this, inner_zero_left] at h
+    contradiction
+  . by_contra hy
+    have : y = 0 := by exact inner_self_eq_zero.mp hy
+    rw [this, inner_zero_right] at h
+    contradiction
 
-lemma nonzero_inner_implies_nonzero_mag (h : ⟪x, y⟫ ≠ 0) : ‖x‖ > 0 ∧ ‖y‖ > 0 := by
+lemma nonzero_inner_implies_nonzero_mag
+  (h : ⟪x, y⟫ ≠ 0) : ‖x‖ > 0 ∧ ‖y‖ > 0 := by
   apply And.intro
   . by_contra hx
     by_cases hx_lt0: ‖x‖ < 0
-    -- ‖x‖ < 0
     . have : ‖x‖ ≥ 0 := by exact norm_nonneg x
       linarith
-    -- ‖x‖ ≥ 0
     . have : ‖x‖ = 0 := by linarith
       have : x = 0 := by exact norm_eq_zero.mp this
       rw [this, inner_zero_left] at h
       contradiction
   . by_contra hy
     by_cases hx_lt0: ‖y‖ < 0
-    -- ‖y‖ < 0
     . have : ‖y‖ ≥ 0 := by exact norm_nonneg y
       linarith
-    -- ‖y‖ ≥ 0
     . have : ‖y‖ = 0 := by linarith
       have : y = 0 := by exact norm_eq_zero.mp this
       rw [this, inner_zero_right] at h
       contradiction
-
 
 theorem cauchy_schwarz : ‖⟪x, y⟫‖ ≤ ‖x‖ * ‖y‖ := by
   by_cases hxy : ‖⟪x, y⟫‖ = 0
@@ -70,7 +63,6 @@ theorem cauchy_schwarz : ‖⟪x, y⟫‖ ≤ ‖x‖ * ‖y‖ := by
     refine Left.mul_nonneg ?_ ?_
     <;> apply norm_nonneg
   . let α := ⟪x, y⟫ / ‖⟪x, y⟫‖
-
     have ha : 0 ≤ ⟪‖x‖⁻¹ • x  - (α • ‖y‖⁻¹) • y, ‖x‖⁻¹ • x  - (α • ‖y‖⁻¹) • y⟫ := real_inner_self_nonneg
     rw [inner_sub_sub_self] at ha
     repeat rw [real_inner_smul_left, real_inner_smul_right] at ha
@@ -79,7 +71,7 @@ theorem cauchy_schwarz : ‖⟪x, y⟫‖ ≤ ‖x‖ * ‖y‖ := by
     rw [mul_comm ‖x‖⁻¹ (α • ‖y‖⁻¹)] at ha
 
     let a : ℝ := ⟪x, y⟫
-    have hnxy : a ≠ 0 := mt (λ h => norm_eq_zero.mpr h) hxy
+    have hnxy : a ≠ 0 := by exact abs_ne_zero.mp hxy
     have h1 : α ^ 2 = 1 := Eq.trans (pow_two α) (inner_prod_over_mag a hnxy)
 
     have hxhy : ⟪x, x⟫ ≠ 0 ∧ ⟪y, y⟫ ≠ 0 := nonzero_inner_implies_nonzero_vectors x y hnxy
@@ -106,8 +98,7 @@ theorem cauchy_schwarz : ‖⟪x, y⟫‖ ≤ ‖x‖ * ‖y‖ := by
     have h_div: 0 ≤ (2 - α * ⟪x, y⟫ * ‖y‖⁻¹ * ‖x‖⁻¹ * 2) / 2 :=
       div_nonneg ha two_positive
     have h_simp : 0 ≤ 1 - ⟪x, y⟫ / ‖⟪x, y⟫‖ * ⟪x, y⟫ * ‖y‖⁻¹ * ‖x‖⁻¹ := by
-      rw [sub_div, mul_div_assoc, div_self (two_ne_zero), mul_one] at h_div
-      exact h_div
+      rwa [sub_div, mul_div_assoc, div_self (two_ne_zero), mul_one] at h_div
     rw [div_eq_inv_mul] at h_simp
     have : ⟪x, y⟫ * ⟪x, y⟫ = |⟪x, y⟫| * |⟪x, y⟫| := by
       rw [←abs_mul_abs_self (⟪x, y⟫)]
@@ -126,5 +117,4 @@ theorem cauchy_schwarz : ‖⟪x, y⟫‖ ≤ ‖x‖ * ‖y‖ := by
     have h_pos : 0 < ‖y‖ * ‖x‖ := non_neg
     have h_bound : (‖y‖ * ‖x‖)⁻¹ * |⟪x, y⟫| ≤ 1 := by
       rwa [ge_iff_le] at h_div_neg
-
     rwa [inv_mul_le_one₀ h_pos, ←Real.norm_eq_abs, mul_comm] at h_bound
