@@ -34,7 +34,44 @@ example (α : Type) (a b : α) (p : α → Prop) (h1 : a = b) (h2 : p a) : p b :
   h1 ▸ h2 -- Eq.subst h1 h2
 
 example (x y : Nat) : (x + y) * (x + y) = x * x + y * x + x * y + y * y :=
-  have h1 : (x + y) * (x + y) = (x + y) * x + (x + y) * y := Nat.left_distrib (x + y) x y
-  have h2 : (x + y) * (x + y) = x * x + y * x + (x * y + y * y) :=
-    (Nat.right_distrib x y x) ▸ (Nat.right_distrib x y y) ▸ h1
-  Eq.trans h2 (Nat.add_assoc (x * x + y * x) (x * y) (y * y)).symm
+  calc
+  (x + y) * (x + y) = (x + y) * x + (x + y) * y
+    := Nat.left_distrib (x + y) x y
+  _ = x * x + y * x + (x * y + y * y)
+    := by repeat rw [Nat.right_distrib]
+  _ = x * x + y * x + x * y + y * y
+    := by exact Eq.symm (Nat.add_assoc (x * x + y * x) (x * y) (y * y))
+
+example (x y : Nat) : (x + y) * (x + y) = x * x + y * x + x * y + y * y :=
+  by simp [Nat.mul_add, Nat.right_distrib, Nat.add_assoc]
+
+variable (a b c d e : Nat)
+example
+    (h1 : a = b)
+    (h2 : b = c + 1)
+    (h3 : c = d)
+    (h4 : e = 1 + d) :
+    a = e :=
+  calc
+    a = d + 1  := by rw [h1, h2, h3]
+    _ = 1 + d  := by rw [Nat.add_comm]
+    _ = e      := by rw [h4]
+
+example (h1 : a = b) (h2 : b ≤ c) (h3 : c + 1 < d) : a < d :=
+  calc
+    a = b := by rw [h1]
+    _ ≤ c := by exact h2
+    _ < c + 1 := by simp
+    _ < d := by exact h3
+
+example (x : Nat) (h : x > 0) : ∃ y, y < x :=
+  ⟨0, h⟩
+
+example (x y z : Nat) (hxy : x < y) (hyz : y < z) : ∃ w, x < w ∧ w < z :=
+  ⟨y, ⟨hxy, hyz⟩⟩
+
+
+variable (α : Type) (p q : α → Prop)
+
+example (h : ∃ x, p x ∧ q x) : ∃ x, q x ∧ p x :=
+  Exists.elim h (λ w hw => ⟨w, ⟨hw.right, hw.left⟩⟩)

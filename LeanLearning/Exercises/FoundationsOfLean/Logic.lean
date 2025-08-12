@@ -59,9 +59,7 @@ example (q : α) : (∀ x , P x) → (∃ x , P x) :=
 
 -- if some x satisfies conjunction of P x and Q x, there must be some x satisfying commutative version of it
 example (h₁ : ∃ x, P x ∧ Q x) : ∃ x, Q x ∧ P x :=
-  -- Exists.elim allows the hypothesis to be true for some new variable
   Exists.elim h₁ (λ c h => Exists.intro c (And.intro h.right h.left))
-
 
 -- proof examples
 variable (p: Type → Prop)
