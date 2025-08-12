@@ -16,7 +16,8 @@ example : (¬ ∀ x, p x) ↔ (∃ x, ¬ p x) := sorry
 example : (∀ x, p x → r) ↔ (∃ x, p x) → r := by
   apply Iff.intro
   . intro h hpx
-    sorry
+    obtain ⟨x, px⟩ := hpx
+    exact h x px
   . intro h a ha
     sorry
 example (a : α) : (∃ x, p x → r) ↔ (∀ x, p x) → r := sorry

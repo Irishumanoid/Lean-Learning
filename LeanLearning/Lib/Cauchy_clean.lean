@@ -97,18 +97,3 @@ theorem cauchy_schwarz : ‖⟪x, y⟫‖ ≤ ‖x‖ * ‖y‖ := by
               _ = |⟪x, y⟫|
                 := by field_simp only[hxy_inner_nonzero]
                       ring_nf
-
-theorem triangle_inequality : ‖x + y‖ ≤ ‖x‖ + ‖y‖ := by
-  have hxy_pos : ⟪x+y, x+y⟫ = ⟪x, x⟫ + 2 * ⟪x, y⟫ + ⟪y, y⟫ := by rw [real_inner_add_add_self]
-  have ineq_sq : ‖x + y‖^2 ≤ (‖x‖ + ‖y‖)^2 := by
-    rw [←real_inner_self_eq_norm_sq, hxy_pos]
-    ring_nf
-    nth_rewrite 4 [add_comm]
-
-    rw [real_inner_self_eq_norm_sq x, real_inner_self_eq_norm_sq y]
-    simp only [add_assoc, add_assoc, add_le_add_iff_left, add_le_add_iff_right]
-    have h_abs := cauchy_schwarz (x := x) (y := y)
-    have h_le : ⟪x, y⟫ ≤ ‖x‖ * ‖y‖ := (abs_le.mp h_abs).right
-    linarith
-  sorry
-  --apply [Real.sqrt_le_sqrt, Real.sqrt_sq] at ineq_sq

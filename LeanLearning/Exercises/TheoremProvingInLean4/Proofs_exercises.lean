@@ -155,7 +155,7 @@ example : p ∧ False ↔ False :=
   Iff.intro (fun h => h.right) (fun h => False.elim h)
 
 example : (p → q) → (¬q → ¬p) :=
-  fun hpq => fun hnq => fun hp => hnq (hpq hp)
+  fun hpq hnq hp => hnq (hpq hp)
 
 
 -- proof by contradiction scariness oof

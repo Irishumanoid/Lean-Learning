@@ -73,5 +73,5 @@ example (x y z : Nat) (hxy : x < y) (hyz : y < z) : ∃ w, x < w ∧ w < z :=
 
 variable (α : Type) (p q : α → Prop)
 
-example (h : ∃ x, p x ∧ q x) : ∃ x, q x ∧ p x :=
-  Exists.elim h (λ w hw => ⟨w, ⟨hw.right, hw.left⟩⟩)
+example (h : ∃ x, p x ∧ q x) : ∃ x, q x ∧ p x := by
+  apply Exists.elim h (λ w hw => ⟨w, ⟨hw.right, hw.left⟩⟩)
