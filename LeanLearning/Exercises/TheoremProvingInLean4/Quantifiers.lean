@@ -75,3 +75,43 @@ variable (α : Type) (p q : α → Prop)
 
 example (h : ∃ x, p x ∧ q x) : ∃ x, q x ∧ p x := by
   apply Exists.elim h (λ w hw => ⟨w, ⟨hw.right, hw.left⟩⟩)
+
+example (h : ∃ x, p x ∧ q x) : ∃ x, q x ∧ p x :=
+  match h with
+  | ⟨w, ⟨hp, hq⟩⟩ => ⟨w, ⟨hq, hp⟩⟩
+
+
+def IsEven (a : Nat) := ∃ b, a = 2 * b
+
+theorem even_plus_even (h1 : IsEven a) (h2 : IsEven b) : IsEven (a + b) :=
+  match h1, h2 with
+  | ⟨w1, hw1⟩, ⟨w2, hw2⟩ =>
+  Exists.intro (w1 + w2)
+      (calc a + b
+        _ = 2 * w1 + 2 * w2 := by rw [hw1, hw2]
+        _ = 2 * (w1 + w2)   := by rw [Nat.mul_add])
+
+theorem even_plus_even_simp (h1 : IsEven a) (h2 : IsEven b) : IsEven (a + b) :=
+  match h1, h2 with
+  | ⟨w1, hw1⟩, ⟨w2, hw2⟩ => ⟨w1 + w2, by rw [hw1, hw2, Nat.mul_add]⟩
+
+open Classical
+variable (p : α → Prop)
+
+example (h : ¬ ∀ x, ¬ p x) : ∃ x, p x := by
+  apply byContradiction
+  intro h1
+  have h2 : ∀ x, ¬p x := by
+    intro x hpx
+    have h3 : ∃ x, p x := ⟨x, hpx⟩
+    exact h1 h3
+  exact h h2
+
+
+variable (f : Nat → Nat) (h : ∀ x : Nat, f x ≤ f (x + 1))
+example : f 0 ≤ f 3 :=
+  have : f 0 ≤ f 1 := h 0
+  have : f 0 ≤ f 2 := Nat.le_trans this (h 1)
+  Nat.le_trans this (h 2)
+
+def prime (p : Nat) : Prop := 2 ≤ p ∧ ∀ d, d ∣ p → d = 1 ∨ d = p

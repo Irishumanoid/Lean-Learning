@@ -106,23 +106,24 @@ theorem cauchy_schwarz : ‖⟪x, y⟫‖ ≤ ‖x‖ * ‖y‖ := by
                       ring_nf
 
               _ = |⟪x, y⟫|^2 / |⟪x, y⟫|
-                := by rw [sq_abs ⟪x, y⟫, ←Real.norm_eq_abs]
+                := by simp [sq_abs ⟪x, y⟫]
 
               _ = |⟪x, y⟫|
                 := by field_simp only [h_inner_prod_nonzero]
                       ring_nf
 
 theorem triangle_inequality : ‖x + y‖ ≤ ‖x‖ + ‖y‖ := by
-  have ineq_sq : ‖x + y‖^2 ≤ (‖x‖ + ‖y‖)^2 := by
-    rw [←real_inner_self_eq_norm_sq, real_inner_add_add_self]
-    ring_nf
-    nth_rewrite 4 [add_comm]
+  suffices ‖x + y‖^2 ≤ (‖x‖ + ‖y‖)^2 by
+    convert Real.sqrt_le_sqrt this using 1
+    <;> field_simp
 
-    repeat rw [real_inner_self_eq_norm_sq, add_assoc]
-    simp only [add_le_add_iff_left, add_le_add_iff_right]
-    have h_abs := cauchy_schwarz (x := x) (y := y)
-    have : ⟪x, y⟫ ≤ ‖x‖ * ‖y‖ := (abs_le.mp h_abs).right
-    linarith
+  rw [←real_inner_self_eq_norm_sq, real_inner_add_add_self]
+  ring_nf
+  nth_rewrite 4 [add_comm]
 
-  convert Real.sqrt_le_sqrt ineq_sq using 1
-  <;> field_simp
+  repeat rw [real_inner_self_eq_norm_sq]
+  ac_change ‖x‖ ^ 2 + (⟪x, y⟫ * 2 + ‖y‖ ^ 2) ≤ ‖x‖ ^ 2 + (‖x‖ * ‖y‖ * 2 + ‖y‖ ^ 2)
+  gcongr
+  have h_abs := cauchy_schwarz (x := x) (y := y)
+  have : ⟪x, y⟫ ≤ ‖x‖ * ‖y‖ := (abs_le.mp h_abs).right
+  linarith
