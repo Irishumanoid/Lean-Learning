@@ -160,8 +160,27 @@ example : α → ((∀ x : α, r) ↔ r) := by
   intro hr _
   exact hr
 
-example : (∀ x, p x ∨ r) ↔ (∀ x, p x) ∨ r := sorry
-example : (∀ x, r → p x) ↔ (r → ∀ x, p x) := sorry
+example : (∀ x, p x ∨ r) ↔ (∀ x, p x) ∨ r := by
+  constructor
+  intro h
+  by_cases ha : ∀ x, p x
+  . exact Or.inl ha
+  . apply Or.inr (by
+      by_contra hnr
+      apply ha
+      intro x
+      cases h x with
+      | inl hpx => exact hpx
+      | inr hr => exact absurd hr hnr
+    )
+  intro h
+  cases h with
+  | inl hap =>
+    intro x
+    exact Or.inl (hap x)
+  | inr hr =>
+    intro x
+    exact Or.inr hr
 
 
 variable (men : Type) (barber : men)
