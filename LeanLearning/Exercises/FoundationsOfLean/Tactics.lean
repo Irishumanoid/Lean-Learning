@@ -82,3 +82,18 @@ example : (¬ ∃ x, p x) ↔ (∀ x, ¬ p x) := by
 example : ∃ n , n > 0 := by
   let m := 1
   exact ⟨ m, Nat.one_pos ⟩
+
+def Even (n : Nat) : Prop := match n with
+| Nat.zero => True
+| Nat.succ x => ¬Even x
+
+example : ∀ n : Nat, Even n ∨ Even n.succ := by
+  intro n
+  induction n with
+  | zero => exact Or.inl trivial
+  | succ k ih =>
+    apply Or.elim ih
+    . intro h1
+      exact Or.inr (by intro h2; exact h2 h1)
+    . intro h3
+      exact Or.inl h3
