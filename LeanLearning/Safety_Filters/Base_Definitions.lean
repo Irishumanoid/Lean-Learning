@@ -13,12 +13,12 @@ def StateSpace := ℝ^{n_x}
 def InputSpace := ℝ^{n_u}
 def DistSpace := ℝ^{n_d}
 def InfoState := ℝ^{n_h}
-instance {n_d : ℕ} : Zero (@DistSpace n_d) := ⟨fun _ => 0⟩ -- zero element exists
+instance {n_d : ℕ} : Zero (@DistSpace n_d) := ⟨fun _ => 0⟩
 
 def policy := @StateSpace n_x → @InputSpace n_u
 def dynamics := @StateSpace n_x → @InputSpace n_u → @DistSpace n_d → @StateSpace n_x -- f
 def measurement := @StateSpace n_x → @InputSpace n_u → @DistSpace n_d → @InfoState n_h -- h
-def cost := @StateSpace n_x → @policy n_x n_u → ℝ
+def cost := @StateSpace n_x → @policy n_x n_u → ℝ -- J
 
 
 def safetyValueFunction := @StateSpace n_x → ℝ
@@ -151,11 +151,11 @@ theorem safetyFilterPreservesSafety
     have h_valFunc : s (filter.safetyMonitor.dyn η₀ (filter.safetyMonitor.fallback η₀) d) ≥ 0
       := (filter.safetyMonitor.safetyCondition η₀ u (filter.interventionProp η₀ u h_safety)).right d
 
-    have : s (dyn x (filter.intervention η₀ u) d) < 0 := by
-      exact failureSetSafetyFunc s f (dyn x (filter.intervention η₀ u) d) h_unsafe_filter
-
     have h_safetyGuarantee : filter.safetyMonitor.monitor η₀ (filter.intervention η₀ u) ≥ 0 →
       s (dyn x (filter.intervention η₀ u) d) ≥ 0
       := filter.safetyMonitor.observableSafetyCondition η₀ (filter.intervention η₀ u) x d
+
+    have : s (dyn x (filter.intervention η₀ u) d) < 0 := by
+      exact failureSetSafetyFunc s f (dyn x (filter.intervention η₀ u) d) h_unsafe_filter
 
     linarith [this, h_safetyGuarantee h_safety]
