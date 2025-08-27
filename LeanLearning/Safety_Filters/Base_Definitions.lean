@@ -13,10 +13,11 @@ def StateSpace := ℝ^{n_x}
 def InputSpace := ℝ^{n_u}
 def DistSpace := ℝ^{n_d}
 def InfoState := ℝ^{n_h}
-instance {n_d : ℕ} : Zero (@DistSpace n_d) := ⟨fun _ => 0⟩
+instance {n_d : ℕ} : Zero (@DistSpace n_d) := ⟨λ _ => 0⟩
 
 def policy := @StateSpace n_x → @InputSpace n_u
 def dynamics := @StateSpace n_x → @InputSpace n_u → @DistSpace n_d → @StateSpace n_x -- f
+def dynamicsApprox := @InfoState n_h → @InputSpace n_u → @DistSpace n_d → @StateSpace n_x
 def measurement := @StateSpace n_x → @InputSpace n_u → @DistSpace n_d → @InfoState n_h -- h
 def cost := @StateSpace n_x → @policy n_x n_u → ℝ -- J
 
@@ -51,32 +52,31 @@ def safeSubsetMax (s : @safetyValueFunction n_x) (safeSet : SafeSet s) :
 
 
 structure SafePolicy where
-  safetyValFunc : @StateSpace n_x → Real
+  safetyValFunc : @StateSpace n_x → ℝ
   safeSet : @SafeSet n_x safetyValFunc
   dyn : @dynamics n_x n_u n_d
   dist : @DistSpace n_d
   invariance: ∃ (p : policy), ∀ x ∈ safeSet.carrier, dyn x (p x) dist ∈ safeSet.carrier
 
-def dynamicsApprox := @InfoState n_h → @InputSpace n_u → @DistSpace n_d → @StateSpace n_x
 
-structure SafetyMonitor (safetyValFunc : @StateSpace n_x → ℝ) (dynComplete : @dynamics n_x n_u n_d) where
+structure SafetyMonitor (safetyValFunc : @StateSpace n_x → ℝ)
+(dyn : @dynamics n_x n_u n_d) (dynApprox : @dynamicsApprox n_x n_u n_d n_h) where
   monitor: @InfoState n_h → @InputSpace n_u → ℝ
   fallback: @InfoState n_h → @InputSpace n_u
-  F_eta: Set (@InfoState n_h) -- info states with potential failure
-  dyn : dynamicsApprox
   safetyCondition:
     ∀ (η : @InfoState n_h) (u : @InputSpace n_u), monitor η u ≥ 0 →
-    η ∉ F_eta ∧
+    (∃ (F_eta: Set (@InfoState n_h)), η ∉ F_eta) ∧ -- info states with potential failure
     (∀ d : @DistSpace n_d,
-    safetyValFunc (dyn η (fallback η) d) ≥ 0)
+    safetyValFunc (dynApprox η (fallback η) d) ≥ 0)
   observableSafetyCondition:
     ∀ (η : @InfoState n_h) (u : @InputSpace n_u) (x : @StateSpace n_x) (d : @DistSpace n_d),
-    monitor η u ≥ 0 → safetyValFunc (dynComplete x u d) ≥ 0
+    monitor η u ≥ 0 → safetyValFunc (dyn x u d) ≥ 0
 
 
-structure SafetyFilter (safetyValFunc : @StateSpace n_x → ℝ) (dyn : @dynamics n_x n_u n_d) where
+structure SafetyFilter (safetyValFunc : @StateSpace n_x → ℝ)
+  (dyn : @dynamics n_x n_u n_d) (dynApprox : @dynamicsApprox n_x n_u n_d n_h) where
   fallback: @InfoState n_h → @InputSpace n_u
-  safetyMonitor: @SafetyMonitor safetyValFunc dyn (n_x := n_x) (n_u := n_u) (n_d := n_d) (n_h := n_h)
+  safetyMonitor: @SafetyMonitor safetyValFunc dyn dynApprox (n_x := n_x) (n_u := n_u) (n_d := n_d) (n_h := n_h)
   intervention: @InfoState n_h → @InputSpace n_u → @InputSpace n_u
   safetyCondition:
     ∀ (η : @InfoState n_h) (u : @InputSpace n_u),
@@ -137,8 +137,8 @@ lemma failureSetSafetyFunc (s : safetyValueFunction) (f : FailureSet s) (x : @St
   simp [f.isFailureSet]
 
 theorem safetyFilterPreservesSafety
-  (s : safetyValueFunction) (dyn : dynamics) (filter : SafetyFilter s dyn (n_x := n_x) (n_d := n_d))
-  (f : FailureSet s) (η₀ : @InfoState n_d):
+  (s : safetyValueFunction) (dyn : dynamics) (dynApprox : dynamicsApprox)
+  (filter : SafetyFilter s dyn dynApprox (n_x := n_x) (n_d := n_d)) (f : FailureSet s) (η₀ : @InfoState n_d):
 
   filter.safetyMonitor.monitor η₀ (filter.fallback η₀) ≥ 0 →
   ∀ (x : @StateSpace n_x) (u : @InputSpace n_u) (d : @DistSpace n_d),
@@ -148,7 +148,7 @@ theorem safetyFilterPreservesSafety
     have h_safety : filter.safetyMonitor.monitor η₀ (filter.intervention η₀ u) ≥ 0
       := filter.safetyCondition η₀ u h
 
-    have h_valFunc : s (filter.safetyMonitor.dyn η₀ (filter.safetyMonitor.fallback η₀) d) ≥ 0
+    have h_valFunc : s (dynApprox η₀ (filter.safetyMonitor.fallback η₀) d) ≥ 0
       := (filter.safetyMonitor.safetyCondition η₀ u (filter.interventionProp η₀ u h_safety)).right d
 
     have h_safetyGuarantee : filter.safetyMonitor.monitor η₀ (filter.intervention η₀ u) ≥ 0 →
