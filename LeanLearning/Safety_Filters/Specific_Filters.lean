@@ -9,16 +9,20 @@ variable {n n_x n_u n_d n_h : ℕ}
 
 
 structure MarginFunction where
-  func:  ℝ^{n_x} → ℝ
-  lipschitz: ∃ (k : NNReal), LipschitzWith k func
+  toFun:  ℝ^{n_x} → ℝ
+  lipschitz: ∃ (k : NNReal), LipschitzWith k toFun
+
+instance : CoeFun (@MarginFunction n_x) (λ _ => ℝ^{n_x} → ℝ) where
+  coe f := f.toFun
+
 
 noncomputable
 def FiniteLRValue {H : ℕ} (dyn : @dynamics n_x n_u n_d) (mf : @MarginFunction n_x) (k : Fin (H + 1)) (x : ℝ^{n_x}) : ℝ :=
   let motive : (Fin (H + 1)) → Type := λ _ => ℝ^{n_x} → ℝ -- recursively defines functions
-  let base : motive (Fin.last H) := λ x => mf.func x
+  let base : motive (Fin.last H) := λ x => mf x
   let cast : (i : Fin H) → motive (i.succ) → motive (i.castSucc) :=
     λ _ Vk_succ =>
-    min (λ x => mf.func x) (λ x => ⨅ (u : InputSpace), (⨆ (d : DistSpace), (Vk_succ (dyn x u d))))
+    min (λ x => mf x) (λ x => ⨅ (u : InputSpace), (⨆ (d : DistSpace), (Vk_succ (dyn x u d))))
 
   Fin.reverseInduction (motive := motive) base cast k x
 
