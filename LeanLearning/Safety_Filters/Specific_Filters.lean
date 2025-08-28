@@ -7,6 +7,9 @@ import Mathlib.Topology.Algebra.Order.LiminfLimsup
 
 variable {n n_x n_u n_d n_h : ℕ}
 
+open scoped Classical
+
+def ValueFunction := @StateSpace n_x → ℝ
 
 structure MarginFunction where
   toFun:  ℝ^{n_x} → ℝ
@@ -15,9 +18,8 @@ structure MarginFunction where
 instance : CoeFun (@MarginFunction n_x) (λ _ => ℝ^{n_x} → ℝ) where
   coe f := f.toFun
 
-
 noncomputable
-def FiniteLRValue {H : ℕ} (dyn : @dynamics n_x n_u n_d) (mf : @MarginFunction n_x) (k : Fin (H + 1)) (x : ℝ^{n_x}) : ℝ :=
+def FiniteTimeValueFunction {H : ℕ} (dyn : @dynamics n_x n_u n_d) (mf : @MarginFunction n_x) (k : Fin (H + 1)) (x : ℝ^{n_x}) : ℝ :=
   let motive : (Fin (H + 1)) → Type := λ _ => ℝ^{n_x} → ℝ -- recursively defines functions
   let base : motive (Fin.last H) := λ x => mf x
   let cast : (i : Fin H) → motive (i.succ) → motive (i.castSucc) :=
@@ -27,13 +29,15 @@ def FiniteLRValue {H : ℕ} (dyn : @dynamics n_x n_u n_d) (mf : @MarginFunction 
   Fin.reverseInduction (motive := motive) base cast k x
 
 noncomputable
-def InfLRValue (dyn : @dynamics n_x n_u n_d) (mf : @MarginFunction n_x) (x : ℝ^{n_x}) : ℝ :=
-  -- limit as h → ∞ for last value in Fin h AKA limsup_{H → ∞} V_H(H, x)
-  Filter.limsup (λ (h : ℕ) => FiniteLRValue dyn mf (Fin.last h) x) Filter.atTop
+def InfiniteTimeValueFunction (f : @dynamics n_x n_u n_d) (margin : @MarginFunction n_x) : @ValueFunction n_x :=
+  if h : ∃ V : ValueFunction, ∀ x : StateSpace, V x = min (margin x) (⨅ (u : InputSpace), (⨆ (d : DistSpace), (V (f x u d)))) then
+    Classical.choose h
+  else
+    fun _ ↦ 0
 
 noncomputable
 def lrSafetyValue (dyn : @dynamics n_x n_u n_d) (mf : @MarginFunction n_x) : @safetyValueFunction n_x :=
-  λ x => InfLRValue dyn mf x
+  λ x => InfiniteTimeValueFunction dyn mf x
 
 noncomputable
 def lrMaxSafeSet (dyn : @dynamics n_x n_u n_d) (mf : @MarginFunction n_x) :=
