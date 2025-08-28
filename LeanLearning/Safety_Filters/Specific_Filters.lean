@@ -26,7 +26,7 @@ def FiniteTimeValueFunction {H : ℕ} (dyn : @dynamics n_x n_u n_d) (mf : @Margi
     λ _ Vk_succ =>
     min (λ x => mf x) (λ x => ⨅ (u : InputSpace), (⨆ (d : DistSpace), (Vk_succ (dyn x u d))))
 
-  Fin.reverseInduction (motive := motive) base cast k x
+  Fin.reverseInduction base cast k x
 
 noncomputable
 def InfiniteTimeValueFunction (f : @dynamics n_x n_u n_d) (margin : @MarginFunction n_x) : @ValueFunction n_x :=
