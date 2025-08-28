@@ -6,45 +6,40 @@ import Mathlib.Topology.Basic
 
 open RealInnerProductSpace
 
-variable {n n_x n_u n_d n_h : ℕ}
+variable {n n_u n_d n_h : ℕ}
 notation "ℝ^{" n "}" => EuclideanSpace ℝ (Fin n)
 
-def StateSpace := ℝ^{n_x}
-def InputSpace := ℝ^{n_u}
-def DistSpace := ℝ^{n_d}
-def InfoState := ℝ^{n_h}
-instance {n_d : ℕ} : Zero (@DistSpace n_d) := ⟨λ _ => 0⟩
+variable {𝓗 : Type*} [PseudoEMetricSpace 𝓗] -- can be a set or probability distribution
+instance {n_d : ℕ} : Zero (ℝ^{n_d}) := ⟨λ _ => 0⟩
 
-def policy := @StateSpace n_x → @InputSpace n_u
-def dynamics := @StateSpace n_x → @InputSpace n_u → @DistSpace n_d → @StateSpace n_x -- f
-def dynamicsApprox := @InfoState n_h → @InputSpace n_u → @DistSpace n_d → @StateSpace n_x
-def measurement := @StateSpace n_x → @InputSpace n_u → @DistSpace n_d → @InfoState n_h -- h
-def cost := @StateSpace n_x → @policy n_x n_u → ℝ -- J
+abbrev dynamics := 𝓗 → ℝ^{n_u} → ℝ^{n_d} → 𝓗 -- f
+def measurement := 𝓗 → ℝ^{n_u} → ℝ^{n_d} → 𝓗 -- h
+def cost := 𝓗 → (𝓗 → ℝ^{n_u}) → ℝ -- J (input -> policy -> value)
 
 
-def safetyValueFunction := @StateSpace n_x → ℝ
-def isSafeSet (s : safetyValueFunction) (Ω : Set (@StateSpace n_x)) := ∀ x ∈ Ω, s x ≥ 0
+def safetyValueFunction := 𝓗 → ℝ
+def isSafeSet (s : safetyValueFunction) (Ω : Set (𝓗)) := ∀ x ∈ Ω, s x ≥ 0
 
-structure FailureSet (s : @safetyValueFunction n_x) where
-  carrier: Set (@StateSpace n_x)
+structure FailureSet (s : safetyValueFunction) where
+  carrier: Set 𝓗
   isFailureSet: carrier = {x | s x < 0}
 
-structure ConstraintSet (s : safetyValueFunction) (failureSet : @FailureSet n_x s) where
-  carrier: Set (@StateSpace n_x)
+structure ConstraintSet (s : safetyValueFunction) (failureSet : FailureSet s) where
+  carrier: Set (𝓗)
   no_overlap : Disjoint carrier failureSet.carrier
 
 structure SafeSet (s : safetyValueFunction) where
-  carrier: Set (@StateSpace n_x)
+  carrier: Set (𝓗)
   safetyCondition: isSafeSet s carrier
 
-def maxSafeSet (s : @safetyValueFunction n_x) : SafeSet s := {
+def maxSafeSet (s : @safetyValueFunction 𝓗) : SafeSet s := {
   carrier := {x | s x ≥ 0}
   safetyCondition := by
     intro x hx
     exact hx
 }
 
-def safeSubsetMax (s : @safetyValueFunction n_x) (safeSet : SafeSet s) :
+def safeSubsetMax (s : @safetyValueFunction 𝓗) (safeSet : SafeSet s) :
   safeSet.carrier ⊆ (maxSafeSet s).carrier := by
     intro x hx
     have : s x ≥ 0 := safeSet.safetyCondition x hx
@@ -52,52 +47,51 @@ def safeSubsetMax (s : @safetyValueFunction n_x) (safeSet : SafeSet s) :
 
 
 structure SafePolicy where
-  safetyValFunc : @StateSpace n_x → ℝ
-  safeSet : @SafeSet n_x safetyValFunc
-  dyn : @dynamics n_x n_u n_d
-  dist : @DistSpace n_d
-  invariance: ∃ (p : policy), ∀ x ∈ safeSet.carrier, dyn x (p x) dist ∈ safeSet.carrier
+  safetyValFunc : 𝓗 → ℝ
+  safeSet : SafeSet safetyValFunc
+  dyn : @dynamics n_u n_d 𝓗
+  dist : ℝ^{n_d}
+  invariance: ∃ (p : 𝓗 → ℝ^{n_u}), ∀ x ∈ safeSet.carrier, dyn x (p x) dist ∈ safeSet.carrier
 
-
-structure SafetyMonitor (safetyValFunc : @StateSpace n_x → ℝ)
-(dyn : @dynamics n_x n_u n_d) (dynApprox : @dynamicsApprox n_x n_u n_d n_h) where
-  monitor: @InfoState n_h → @InputSpace n_u → ℝ
-  fallback: @InfoState n_h → @InputSpace n_u
+structure SafetyMonitor (safetyValFunc : 𝓗 → ℝ)
+(dyn : @dynamics n_u n_d 𝓗) (f_eta : FailureSet safetyValFunc) where
+  monitor: 𝓗 → ℝ^{n_u} → ℝ
+  fallback: 𝓗 → ℝ^{n_u}
   safetyCondition:
-    ∀ (η : @InfoState n_h) (u : @InputSpace n_u), monitor η u ≥ 0 →
-    (∃ (F_eta: Set (@InfoState n_h)), η ∉ F_eta) ∧ -- info states with potential failure
-    (∀ d : @DistSpace n_d,
-    safetyValFunc (dynApprox η (fallback η) d) ≥ 0)
+    ∀ (η : 𝓗) (u : ℝ^{n_u}), monitor η u ≥ 0 →
+    (∀ η, η ∉ f_eta.carrier) ∧ -- info states with potential failure
+    (∀ d : ℝ^{n_d},
+    safetyValFunc (dyn η (fallback η) d) ≥ 0)
   observableSafetyCondition:
-    ∀ (η : @InfoState n_h) (u : @InputSpace n_u) (x : @StateSpace n_x) (d : @DistSpace n_d),
+    ∀ (η : 𝓗) (u : ℝ^{n_u}) (x : 𝓗) (d : ℝ^{n_d}),
     monitor η u ≥ 0 → safetyValFunc (dyn x u d) ≥ 0
 
 
-structure SafetyFilter (safetyValFunc : @StateSpace n_x → ℝ)
-  (dyn : @dynamics n_x n_u n_d) (dynApprox : @dynamicsApprox n_x n_u n_d n_h) where
-  fallback: @InfoState n_h → @InputSpace n_u
-  safetyMonitor: @SafetyMonitor safetyValFunc dyn dynApprox (n_x := n_x) (n_u := n_u) (n_d := n_d) (n_h := n_h)
-  intervention: @InfoState n_h → @InputSpace n_u → @InputSpace n_u
+structure SafetyFilter (safetyValFunc : 𝓗 → ℝ)
+  (dyn : @dynamics n_u n_d 𝓗) (f_eta : FailureSet safetyValFunc) where
+  fallback: 𝓗 → ℝ^{n_u}
+  safetyMonitor: SafetyMonitor safetyValFunc dyn f_eta (n_u := n_u) (n_d := n_d)
+  intervention: 𝓗 → ℝ^{n_u} → ℝ^{n_u}
   safetyCondition:
-    ∀ (η : @InfoState n_h) (u : @InputSpace n_u),
+    ∀ (η : 𝓗) (u : ℝ^{n_u}),
     safetyMonitor.monitor η (fallback η) ≥ 0 → safetyMonitor.monitor η (intervention η u) ≥ 0
   interventionProp:
-    ∀ (η : @InfoState n_h) (u : @InputSpace n_u),
+    ∀ (η : 𝓗) (u : ℝ^{n_u}),
     safetyMonitor.monitor η (intervention η u) ≥ 0 → safetyMonitor.monitor η u ≥ 0
 
 
 -- keeps next system state within maximal safe set
-def U_safe (x : @StateSpace n_x) (dyn : @dynamics n_x n_u n_d) (s : @safetyValueFunction n_x)
-  : Set (@InputSpace n_u) :=
-    {u | ∀ d : @DistSpace n_d, dyn x u d ∈ (maxSafeSet s).carrier}
+def U_safe (x : 𝓗) (dyn : @dynamics n_u n_d 𝓗) (s : @safetyValueFunction 𝓗)
+  : Set (ℝ^{n_u}) :=
+    {u | ∀ d : ℝ^{n_d}, dyn x u d ∈ (maxSafeSet s).carrier}
 
 /-
   Proposition 1 (perfect safety filter):
   ∃ filter, filter(x, s) ∈ U_safe (U_safe ⊆ U) if U_safe ≠ ∅ AND filter(x, s) = u if u ∈ U_safe
 -/
 noncomputable
-def safetyFilter (dyn : @dynamics n_x n_u n_d) (s : @safetyValueFunction n_x) :
-  @StateSpace n_x → @InputSpace n_u → @InputSpace n_u := by
+def safetyFilter (dyn : @dynamics n_u n_d 𝓗) (s : @safetyValueFunction 𝓗) :
+  𝓗 → ℝ^{n_u} → ℝ^{n_u} := by
   intro x u
   by_cases h : u ∈ U_safe x dyn s
   . exact u
@@ -106,10 +100,10 @@ def safetyFilter (dyn : @dynamics n_x n_u n_d) (s : @safetyValueFunction n_x) :
     . exact u
 
 theorem perfectSafetyFilter
-  (dyn : @dynamics n_x n_u n_d)
-  (s : @safetyValueFunction n_x):
-  ∃ filter : @StateSpace n_x → @InputSpace n_u → @InputSpace n_u,
-  ∀ (x : @StateSpace n_x) (u : @InputSpace n_u),
+  (dyn : @dynamics n_u n_d 𝓗)
+  (s : safetyValueFunction):
+  ∃ filter : 𝓗 → ℝ^{n_u} → ℝ^{n_u},
+  ∀ (x : 𝓗) (u : ℝ^{n_u}),
   ((U_safe x dyn s).Nonempty → filter x u ∈ (U_safe x dyn s)) ∧ (u ∈ (U_safe x dyn s) → filter x u = u) := by
     refine ⟨safetyFilter dyn s, ?_⟩
     intro x u
@@ -125,30 +119,29 @@ theorem perfectSafetyFilter
       rw [dif_pos]; exact h_safe
 
 
-axiom existsOptimalPolicy (c : @cost n_x n_u):
-  ∃ (π_task : @policy n_x n_u), ∀ (x0 : @StateSpace n_x), ∀ (π : @policy n_x n_u),
+axiom existsOptimalPolicy (c : @cost n_u 𝓗):
+  ∃ (π_task : 𝓗 → ℝ^{n_u}), ∀ (x0 : 𝓗), ∀ (π : 𝓗 → ℝ^{n_u}),
   c x0 π_task ≤ c x0 π ∧
-  ∃ (u_k : @InputSpace n_u) (filter : @StateSpace n_x → @InputSpace n_u → @InputSpace n_u),
-    ∀ (x_k : @StateSpace n_x), u_k = filter x_k (π_task x_k)
+  ∃ (u_k : ℝ^{n_u}) (filter : 𝓗 → ℝ^{n_u} → ℝ^{n_u}),
+    ∀ (x_k : 𝓗), u_k = filter x_k (π_task x_k)
 
 
-lemma failureSetSafetyFunc (s : safetyValueFunction) (f : FailureSet s) (x : @StateSpace n_x) :
-    x ∈ f.carrier → s x < 0 := by
-  simp [f.isFailureSet]
+lemma failureSetSafetyFunc (s : safetyValueFunction) (f_eta : FailureSet s) (x : 𝓗) :
+    x ∈ f_eta.carrier → s x < 0 := by
+  simp [f_eta.isFailureSet]
 
-theorem safetyFilterPreservesSafety
-  (s : safetyValueFunction) (dyn : dynamics) (dynApprox : dynamicsApprox)
-  (filter : SafetyFilter s dyn dynApprox (n_x := n_x) (n_d := n_d)) (f : FailureSet s) (η₀ : @InfoState n_d):
+theorem safetyFilterPreservesSafety (s : safetyValueFunction) (dyn : dynamics) (f_eta : FailureSet s)
+  (filter : SafetyFilter s dyn f_eta (n_d := n_d)) (η₀ : 𝓗):
 
   filter.safetyMonitor.monitor η₀ (filter.fallback η₀) ≥ 0 →
-  ∀ (x : @StateSpace n_x) (u : @InputSpace n_u) (d : @DistSpace n_d),
-  dyn x (filter.intervention η₀ u) d ∉ f.carrier := by
+  ∀ (x : 𝓗) (u : ℝ^{n_u}) (d : ℝ^{n_d}),
+  dyn x (filter.intervention η₀ u) d ∉ f_eta.carrier := by
     intro h x u d h_unsafe_filter
 
     have h_safety : filter.safetyMonitor.monitor η₀ (filter.intervention η₀ u) ≥ 0
       := filter.safetyCondition η₀ u h
 
-    have h_valFunc : s (dynApprox η₀ (filter.safetyMonitor.fallback η₀) d) ≥ 0
+    have h_valFunc : s (dyn η₀ (filter.safetyMonitor.fallback η₀) d) ≥ 0
       := (filter.safetyMonitor.safetyCondition η₀ u (filter.interventionProp η₀ u h_safety)).right d
 
     have h_safetyGuarantee : filter.safetyMonitor.monitor η₀ (filter.intervention η₀ u) ≥ 0 →
@@ -156,6 +149,6 @@ theorem safetyFilterPreservesSafety
       := filter.safetyMonitor.observableSafetyCondition η₀ (filter.intervention η₀ u) x d
 
     have : s (dyn x (filter.intervention η₀ u) d) < 0 := by
-      exact failureSetSafetyFunc s f (dyn x (filter.intervention η₀ u) d) h_unsafe_filter
+      exact failureSetSafetyFunc s f_eta (dyn x (filter.intervention η₀ u) d) h_unsafe_filter
 
     linarith [this, h_safetyGuarantee h_safety]
