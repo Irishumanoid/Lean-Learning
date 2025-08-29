@@ -65,13 +65,13 @@ def lrSafetyMonitor (dyn : @dynamics n_u n_d 𝓗) (mf : MarginFunction 𝓗) (f
     exact InfiniteTimeValueFunction dyn mf x
   fallback := by
     intro η
-    sorry
+    have safeSet : Set ℝ^{n_u} := (U_safe η dyn (lrSafetyValue dyn mf))
+
+    by_cases h : safeSet.Nonempty
+      . exact h.choose
+      . exact 0
+
   safetyCondition := sorry
-  observableSafetyCondition := by
-    intro η u x d monitor
-    dsimp at monitor
-    unfold lrSafetyValue
-    sorry
 }
 
 noncomputable

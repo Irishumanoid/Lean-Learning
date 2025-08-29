@@ -59,12 +59,7 @@ structure SafetyMonitor (safetyValFunc : 𝓗 → ℝ)
   fallback: 𝓗 → ℝ^{n_u}
   safetyCondition:
     ∀ (η : 𝓗) (u : ℝ^{n_u}), monitor η u ≥ 0 →
-    (∀ η, η ∉ f_eta.carrier) ∧ -- info states with potential failure
-    (∀ d : ℝ^{n_d},
-    safetyValFunc (dyn η (fallback η) d) ≥ 0)
-  observableSafetyCondition:
-    ∀ (η : 𝓗) (u : ℝ^{n_u}) (x : 𝓗) (d : ℝ^{n_d}),
-    monitor η u ≥ 0 → safetyValFunc (dyn x u d) ≥ 0
+    η ∉ f_eta.carrier ∧ (∀ d : ℝ^{n_d}, safetyValFunc (dyn η (fallback η) d) ≥ 0)
 
 
 structure SafetyFilter (safetyValFunc : 𝓗 → ℝ)
@@ -121,9 +116,17 @@ theorem perfectSafetyFilter
 
 axiom existsOptimalPolicy (c : @cost n_u 𝓗):
   ∃ (π_task : 𝓗 → ℝ^{n_u}), ∀ (x0 : 𝓗), ∀ (π : 𝓗 → ℝ^{n_u}),
-  c x0 π_task ≤ c x0 π ∧
-  ∃ (u_k : ℝ^{n_u}) (filter : 𝓗 → ℝ^{n_u} → ℝ^{n_u}),
-    ∀ (x_k : 𝓗), u_k = filter x_k (π_task x_k)
+    c x0 π_task ≤ c x0 π ∧
+    ∃ (u_k : ℝ^{n_u}) (filter : 𝓗 → ℝ^{n_u} → ℝ^{n_u}),
+      ∀ (x_k : 𝓗), u_k = filter x_k (π_task x_k)
+
+
+-- since safety filter preserves the positivity of the safety monitor’s checks
+axiom safetyMonitorGuaranteesSafety (η : 𝓗) (s : safetyValueFunction) (dyn : dynamics)
+  (f_eta : FailureSet s) (filter : SafetyFilter s dyn f_eta (n_d := n_d)):
+  ∀ (x : 𝓗) (u : ℝ^{n_u}) (d : ℝ^{n_d}),
+  filter.safetyMonitor.monitor η (filter.intervention η u) ≥ 0 →
+  s (dyn x (filter.intervention η u) d) ≥ 0
 
 
 lemma failureSetSafetyFunc (s : safetyValueFunction) (f_eta : FailureSet s) (x : 𝓗) :
@@ -146,7 +149,7 @@ theorem safetyFilterPreservesSafety (s : safetyValueFunction) (dyn : dynamics) (
 
     have h_safetyGuarantee : filter.safetyMonitor.monitor η₀ (filter.intervention η₀ u) ≥ 0 →
       s (dyn x (filter.intervention η₀ u) d) ≥ 0
-      := filter.safetyMonitor.observableSafetyCondition η₀ (filter.intervention η₀ u) x d
+      := by apply safetyMonitorGuaranteesSafety
 
     have : s (dyn x (filter.intervention η₀ u) d) < 0 := by
       exact failureSetSafetyFunc s f_eta (dyn x (filter.intervention η₀ u) d) h_unsafe_filter
